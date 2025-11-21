@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Vertical Display</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
+    
+    <style>
+        :root {
+            /* These will be overridden by JS for a dynamic color scheme */
+            --bg-color-dynamic: #000;
+            --main-color-dynamic: #FFF;
+            --queue-scroll-speed: 35s; 
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color-dynamic);
+            color: var(--main-color-dynamic);
+            font-family: 'Montserrat', sans-serif;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden; 
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 1.5s ease;
+        }
+
+        /* --- DYNAMIC BACKGROUND --- */
+        .bg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-size: cover;
+            background-position: center;
+            filter: blur(40px) brightness(0.4);
+            transition: background-image 1s ease-in-out;
+            animation: slowZoom 60s infinite ease-in-out; /* 60 seconds ensures it's extremely subtle */
+        }
+
+        /* --- MAIN VISUAL STACK --- */
+        .visual-stack {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            gap: 2vh;
+            padding-top: 2vh; /* Increased for stability */
+        }
+
+        /* ALBUM ART (Square, Huge - 85% width) */
+        .album-art-container {
+            width: 90vw; 
+            height: 90vw;
+            max-width: 1000px;
+            max-height: 1000px;
+            position: relative;
+            cursor: pointer; /* Indicate clickability for the new pause/play feature */
+        }
+
+        .album-img {
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            object-fit: cover;
+        }
+
+        /* ARTIST IMAGE (Clickable to reveal controls) */
+        .artist-img-container {
+            width: 30vh; 
+            height: 30vh; 
+            max-width: 300px;
+            max-height: 300px;
+            border-radius: 50%;
+            border: 4px solid rgba(255,255,255,0.2);
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            margin-top: 0;
+            margin-bottom: 0; 
+            z-index: 2;
+            background: #000;
+            cursor: pointer; /* Indicate clickability */
+            outline: none; /* Removes focus/hyperlink box on click */
+        }
+        
+        .artist-img-container:focus {
+            outline: none; /* Ensure no focus ring */
+        }
+        
+        .artist-img-container:active {
+            outline: none; /* Ensure no focus ring */
+        }
+
+        .artist-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* --- TEXT INFO --- */
+        .info-container {
+            text-align: center;
+            width: 90%;
+            z-index: 3;
+        }
+
+        .track-title {
+            font-size: clamp(2vh, 4vh, 4vh);
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            margin: 0;
+            /* FIX: Enhanced text-shadow for readability */
+            text-shadow: 0 0 5px rgba(0,0,0,0.8), 0 0 15px rgba(0,0,0,0.6); 
+            line-height: 1.1;
+            display: -webkit-box; 
+            -webkit-box-orient: vertical; 
+            -webkit-line-clamp: 2; 
+            overflow: hidden; 
+            text-overflow: ellipsis;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .artist-name {
+            font-size: 2.5vh;
+            font-weight: 400;
+            color: rgba(255,255,255,0.8);
+            margin-top: 10px;
+            /* FIX: Added text-shadow for readability */
+            text-shadow: 0 0 3px rgba(0,0,0,0.5); 
+        }
+        
+        .album-name {
+            font-size: 2vh;
+            font-weight: 700;
+            margin-top: 5px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.8);
+            /* FIX: Added text-shadow for readability */
+            text-shadow: 0 0 3px rgba(0,0,0,0.5);
+        }
+
+        /* --- PLAYBACK CONTROLS (Hidden by default) --- */
+        .controls {
+            margin-top: 0;
+            margin-bottom: 0;
+            padding: 0 0; /* Added padding to contain controls and bar */
+            display: flex;
+            flex-direction: column; /* Changed to column to stack buttons and bar */
+            gap: 1vh; /* Space between buttons and bar */
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+
+            /* HIDDEN STYLES */
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease-in-out;
+        }
+        /* Class added by JS to show controls */
+        .controls.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        /* Inner button container to keep buttons centered */
+        .button-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        .control-button {
+            background: transparent;
+            border: none;
+            color: var(--main-color-dynamic);
+            cursor: pointer;
+            transition: color 0.2s, transform 0.1s;
+            padding: 5px;
+            outline: none; 
+        }
+        
+        .control-button:hover {
+            color: #1DB954; 
+        }
+
+        .control-button:active {
+            outline: none;
+            transform: scale(0.9); 
+            color: #1DB954; /* Green only while physically pressed */
+        }
+        .control-button:focus {
+            outline: none; /* Keep the focus box removed */
+            color: var(--main-color-dynamic); /* Revert color immediately after press */
+        }
+        
+        .control-button i {
+            font-size: 3.5vh;
+        }
+
+        /* PROGRESS BAR */
+        .progress-wrapper {
+            width: 80%;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            margin: 0 auto; /* Centered inside controls */
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--main-color-dynamic);
+            width: 0%;
+            box-shadow: 0 0 10px var(--main-color-dynamic);
+            transition: width 0.5s linear; /* Smoother transition for local update */
+        }
+
+        /* --- MINIMAL QUEUE (TICKER) --- */
+        .queue-container {
+            width: 100%;
+            height: 4vh;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .queue-label {
+            padding: 0 20px;
+            font-weight: 700;
+            font-size: 1.5vh;
+            color: #1DB954;
+            background: black;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            z-index: 5;
+            box-shadow: 5px 0 20px rgba(0,0,0,0.5);
+        }
+
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .ticker {
+            display: inline-block;
+            padding-left: 100%;
+            animation: ticker var(--queue-scroll-speed) linear infinite;
+        }
+
+        .ticker-item {
+            display: inline-block;
+            font-size: 2vh;
+            padding-right: 50px;
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .ticker-item strong {
+            color: white;
+        }
+
+        /* ANIMATIONS */
+        @keyframes ticker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
+
+        @keyframes slowZoom {
+            0% { transform: scale(1.0); }
+            50% { transform: scale(1.02); } /* Subtle zoom in */
+            100% { transform: scale(1.0); }
+        }
+
+        .hidden { display: none; }
+        
+        /* --- NEW: ARTIST PHOTO GALLERY OVERLAY --- */
+        .artist-gallery {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--bg-color-dynamic);
+            color: var(--main-color-dynamic);
+            z-index: 10;
+            /* CHANGE 1: Start off-screen (top) */
+            transform: translateY(-100%); 
+            transition: transform 0.4s ease-out;
+            display: flex;
+            flex-direction: column;
+            overflow-y: hidden; 
+        }
+        
+        .artist-gallery.open {
+            /* CHANGE 2: Slide into view (top is 0) */
+            transform: translateY(0); 
+        }
+
+        .gallery-header {
+            padding: 20px;
+            text-align: center;
+            font-size: 3vh;
+            font-weight: 700;
+            background-color: rgba(0, 0, 0, 0.5); 
+            backdrop-filter: blur(5px);
+            z-index: 11;
+        }
+
+        .gallery-header i {
+            font-size: 2vh;
+            display: block;
+            margin-bottom: 5px;
+            color: var(--main-color-dynamic);
+            cursor: pointer;
+        }
+
+        .gallery-content {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto; /* Make the content scrollable */
+            display: flex;
+            flex-direction: column; /* Column layout for larger images */
+            align-items: center; /* Center images in the column */
+            gap: 15px;
+        }
+        
+        .gallery-content img {
+            width: 90vw; /* Use full width on mobile */
+            max-width: 880px; /* Set a max width for large screens */
+            height: auto; /* Allow height to scale naturally */
+            max-height: 40vh; /* Limit vertical size */
+            object-fit: contain; /* Ensures whole image is shown (no truncation/cropping) */
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            transition: transform 0.2s ease;
+        }
+        
+        .gallery-content img:hover {
+            transform: scale(1.02);
+        }
+
+        .api-note {
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 1.5vh;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-layer" id="bgLayer"></div>
+
+    <div class="visual-stack" id="visualStack">
+        <div class="album-art-container" onclick="sendControl('toggle', this)">
+            <img src="" id="albumImg" class="album-img" crossorigin="anonymous"> 
+        </div>
+
+        <div class="info-container">
+            <div class="track-title" id="trackName">Waiting...</div>
+            <div class="artist-name" id="artistName">Start Spotify</div>
+            <div class="album-name" id="albumName">Loading Album...</div>
+            
+            <div class="controls" id="controlPanel">
+                <div class="button-group">
+                    <button class="control-button" onclick="sendControl('previous', this)"><i class="fa-solid fa-backward-step"></i></button>
+                    <button class="control-button" onclick="sendControl('toggle', this)" id="playPauseButton"><i class="fa-solid fa-play"></i></button>
+                    <button class="control-button" onclick="sendControl('next', this)"><i class="fa-solid fa-forward-step"></i></button>
+                </div>
+                
+                <div class="progress-wrapper">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+            
+            </div>
+        
+        <div class="artist-img-container" onclick="toggleControls()">
+            <img src="" id="artistImg" class="artist-img">
+        </div>
+
+    </div>
+    
+    <div class="artist-gallery" id="artistGallery">
+        <div class="gallery-header" onclick="closeGallery()">
+            <i class="fa-solid fa-chevron-down"></i>
+            <h2 id="galleryArtistName"></h2>
+        </div>
+        <div class="gallery-content" id="galleryContent">
+            </div>
+    </div>
+
+    <div class="queue-container">
+        <div class="queue-label">NEXT UP</div>
+        <div class="ticker-wrap">
+            <div class="ticker" id="queueTicker">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        const colorThief = new ColorThief();
+        let currentTrackID = null;
+        let currentArtistName = ""; 
+
+        // --- SWIPE GESTURE VARIABLES ---
+        let touchstartX = 0;
+        let touchendX = 0;
+        let touchstartY = 0;
+        let touchendY = 0;
+        const minSwipeDistance = 50; 
+        // --- END SWIPE GESTURE VARIABLES ---
+
+        // --- GLOBAL STATE FOR LOCAL PROGRESS TIMER ---
+        let currentProgress = 0; // ms
+        let currentDuration = 1; // ms (Avoid division by zero)
+        let lastUpdateTimestamp = 0; // ms
+        let progressTimer = null; // Timer ID for local progress update
+
+        /**
+         * Toggles the visibility of the playback controls and starts/stops the local progress timer.
+         */
+        function toggleControls() {
+            const panel = document.getElementById('controlPanel');
+            panel.classList.toggle('visible');
+
+            if (panel.classList.contains('visible')) {
+                startProgressTimer();
+            } else {
+                stopProgressTimer();
+            }
+        }
+        
+        /**
+         * Calculates and updates the progress bar visually using local state.
+         */
+        function localUpdateProgress() {
+            if (!progressTimer) return;
+
+            const elapsed = Date.now() - lastUpdateTimestamp;
+            const estimatedProgress = currentProgress + elapsed;
+
+            if (estimatedProgress > currentDuration && currentDuration > 0) {
+                // If the track is over, stop local timer and force a slow API refresh
+                stopProgressTimer();
+                updateDisplay(); 
+                return;
+            }
+
+            const pct = (estimatedProgress / currentDuration) * 100;
+            document.getElementById('progressFill').style.width = pct + "%";
+        }
+        
+        function startProgressTimer() {
+            if (progressTimer) return;
+            localUpdateProgress(); 
+            progressTimer = setInterval(localUpdateProgress, 500); 
+        }
+
+        function stopProgressTimer() {
+            if (progressTimer) {
+                clearInterval(progressTimer);
+                progressTimer = null;
+            }
+        }
+
+        /**
+         * Sends a control signal to the Flask backend and removes button focus.
+         */
+        function sendControl(action, element) {
+            let endpoint;
+            if (action === 'previous') endpoint = '/previous_track';
+            else if (action === 'next') endpoint = '/next_track';
+            else if (action === 'toggle') endpoint = '/toggle_playback';
+            else return;
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            }).then(() => {
+                setTimeout(updateDisplay, 1000); 
+            });
+            
+            if (element) {
+                element.blur(); 
+            }
+        }
+        
+        // --- Color Helper Functions (unchanged) ---
+        function rgbToHex(rgb) {
+            const componentToHex = (c) => {
+                const hex = c.toString(16);
+                return hex.length == 1 ? "0" + hex : hex;
+            };
+            return "#" + componentToHex(rgb[0]) + componentToHex(rgb[1]) + componentToHex(rgb[2]);
+        }
+        
+        function updateDynamicColor(imgUrl) {
+            const img = document.getElementById('albumImg');
+            img.onload = () => {
+                try {
+                    const palette = colorThief.getPalette(img, 5);
+                    const mainColorRGB = palette[1]; 
+                    const mainColorHex = rgbToHex(mainColorRGB);
+                    
+                    const darkR = Math.max(0, mainColorRGB[0] - 30); 
+                    const darkG = Math.max(0, mainColorRGB[1] - 30);
+                    const darkB = Math.max(0, mainColorRGB[2] - 30);
+                    const darkColorHex = rgbToHex([darkR, darkG, darkB]);
+
+                    document.documentElement.style.setProperty('--main-color-dynamic', mainColorHex);
+                    document.documentElement.style.setProperty('--bg-color-dynamic', darkColorHex);
+                } catch (e) {
+                    console.error("ColorThief failed:", e);
+                    document.documentElement.style.setProperty('--main-color-dynamic', '#FFFFFF');
+                    document.documentElement.style.setProperty('--bg-color-dynamic', '#000000');
+                }
+            };
+            img.src = imgUrl; 
+        }
+        // --- End Color Helper Functions ---
+
+        // --- CORRECTED GALLERY FUNCTIONS with AudioDB CORS Fix (unchanged) ---
+        
+        /**
+         * Fetches and displays artist photos from TheAudioDB using a CORS proxy.
+         */
+        async function fetchArtistPhotos(artistName) {
+            const galleryContent = document.getElementById('galleryContent');
+            const galleryArtistName = document.getElementById('galleryArtistName');
+            
+            galleryArtistName.textContent = artistName;
+            galleryContent.innerHTML = `<p class="api-note">Loading photos for ${artistName}...</p>`;
+
+            // TheAudioDB endpoint
+            const audioDbUrl = `https://theaudiodb.com/api/v1/json/123/search.php?s=${encodeURIComponent(artistName)}`;
+            
+            // CORS Fix: Wrap the AudioDB URL with the public CORS proxy service
+            const searchUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(audioDbUrl);
+            
+            try {
+                const response = await fetch(searchUrl);
+                const proxyData = await response.json();
+                
+                if (!proxyData.contents) {
+                     galleryContent.innerHTML = `<p class="api-note">Error: Proxy failed to fetch contents.</p>`;
+                     return;
+                }
+                
+                // Parse the inner JSON string returned by the proxy
+                const data = JSON.parse(proxyData.contents); 
+                
+                if (!data.artists || data.artists.length === 0) {
+                    galleryContent.innerHTML = `<p class="api-note">No fanart found for **${artistName}** on TheAudioDB.</p>`;
+                    return;
+                }
+                
+                const artistData = data.artists[0];
+                const imageKeys = [
+                    'strArtistFanart', 
+                    'strArtistFanart2', 
+                    'strArtistFanart3', 
+                    'strArtistThumb', 
+                    'strArtistWideThumb' 
+                ];
+                
+                let imageHTML = '';
+                let count = 0;
+                
+                imageKeys.forEach(key => {
+                    if (artistData[key] && count < 5) { 
+                        imageHTML += `<img src="${artistData[key]}" alt="${artistName} Fanart">`;
+                        count++;
+                    }
+                });
+
+                if (imageHTML === '') {
+                    galleryContent.innerHTML = `<p class="api-note">No fanart found for **${artistName}** on TheAudioDB.</p>`;
+                } else {
+                    galleryContent.innerHTML = imageHTML;
+                }
+
+            } catch (e) {
+                console.error("TheAudioDB fetch failed:", e);
+                galleryContent.innerHTML = `<p class="api-note">Error fetching photos. Please check your connection or TheAudioDB status. (CORS fix failed)</p>`;
+            }
+        }
+
+        /**
+         * Opens the photo gallery overlay.
+         */
+        function openGallery() {
+            const gallery = document.getElementById('artistGallery');
+            if (currentArtistName) {
+                 gallery.classList.add('open');
+                 fetchArtistPhotos(currentArtistName);
+                 stopProgressTimer();
+                 console.log("Gallery opened.");
+            } else {
+                console.log("No current artist to search for.");
+            }
+        }
+
+        /**
+         * Closes the photo gallery overlay.
+         */
+        function closeGallery() {
+            document.getElementById('artistGallery').classList.remove('open');
+            if (document.getElementById('controlPanel').classList.contains('visible')) {
+                startProgressTimer();
+            }
+            console.log("Gallery closed.");
+        }
+        // --- END GALLERY FUNCTIONS ---
+
+
+        // --- SWIPE GESTURE LOGIC (Updated to match top-down transition) ---
+        function handleTouchStart(event) {
+            touchstartX = event.changedTouches[0].screenX;
+            touchstartY = event.changedTouches[0].screenY;
+        }
+
+        function handleTouchEnd(event) {
+            touchendX = event.changedTouches[0].screenX;
+            touchendY = event.changedTouches[0].screenY;
+            handleGesture();
+        }
+
+        function handleGesture() {
+            const deltaX = touchendX - touchstartX;
+            const deltaY = touchendY - touchstartY;
+            
+            const isHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+
+            if (isHorizontal) {
+                if (Math.abs(deltaX) < minSwipeDistance) return; 
+                
+                if (deltaX > 0) {
+                    // Swipe right -> Previous Track
+                    sendControl('previous');
+                } else if (deltaX < 0) {
+                    // Swipe left -> Next Track
+                    sendControl('next');
+                }
+            } else {
+                if (Math.abs(deltaY) < minSwipeDistance) return; 
+                
+                const gallery = document.getElementById('artistGallery');
+                const isGalleryOpen = gallery.classList.contains('open');
+
+                // NOTE: Swipes are now inverted for the gallery interaction to match the new animation:
+                // Swipe DOWN opens (pulls down from the top).
+                // Swipe UP closes (pushes back up to the top).
+
+                if (deltaY > 0) {
+                    // Swipe Down -> Open Gallery (if closed) OR Close Gallery (if open, pushing it back up)
+                    if (isGalleryOpen) {
+                        // The gallery is open (slid down), so swipe down again to close it (if desired, though usually swipe up closes top-down)
+                        // STICKING TO USER INTENT: Keep swipe down/up same for controls, but invert for gallery open/close to match visual direction.
+                        // However, a swipe DOWN is now a logical open action (pulling down from the top)
+                        // Let's re-map the vertical gestures for consistency with the *new* top-down animation:
+                        
+                        // Swipe Down: Opens gallery from the top (Pulls it down)
+                        if (!isGalleryOpen) {
+                            openGallery();
+                        } else {
+                            // If open, maybe minimize or close it if the user missed the swipe up.
+                            // To keep it simple, if open, ignore swipe down.
+                        }
+                    } else {
+                        // Swipe Down on main screen -> Open Gallery
+                        openGallery();
+                    }
+                } else if (deltaY < 0) {
+                    // Swipe Up -> Close Gallery (if open) OR Toggle Controls (if closed)
+
+                    if (isGalleryOpen) {
+                        // Swipe up closes (pushes it back to the top)
+                        closeGallery();
+                    } else {
+                        // Swipe Up (on main screen) - Toggle controls
+                        toggleControls();
+                    }
+                }
+            }
+            
+            // Reset touch coordinates
+            touchstartX = 0; touchendX = 0;
+            touchstartY = 0; touchendY = 0;
+        }
+        // --- END SWIPE GESTURE LOGIC ---
+
+        async function updateDisplay() {
+            try {
+                const response = await fetch('/data');
+                const data = await response.json();
+                const playPauseButton = document.getElementById('playPauseButton');
+
+                if (data.playing === false) {
+                    document.getElementById('trackName').innerText = "PAUSED";
+                    document.getElementById('artistName').innerText = "";
+                    document.getElementById('albumName').innerText = "";
+                    document.getElementById('bgLayer').style.backgroundImage = `none`;
+                    playPauseButton.innerHTML = '<i class="fa-solid fa-play"></i>';
+                    currentArtistName = ""; 
+                    
+                    stopProgressTimer();
+                    return;
+                }
+
+                const cur = data.current;
+                currentArtistName = cur.artist_name; 
+
+                // --- DYNAMIC COLOR & IMAGE UPDATE ---
+                if (cur.name !== currentTrackID) {
+                    currentTrackID = cur.name;
+                    updateDynamicColor(cur.album_art);
+                }
+
+                // Update Images
+                document.getElementById('artistImg').src = cur.artist_image || cur.album_art; 
+                document.getElementById('bgLayer').style.backgroundImage = `url('${cur.album_art}')`;
+
+                // Update Text
+                document.getElementById('trackName').innerText = cur.name;
+                document.getElementById('artistName').innerText = cur.artist_name;
+                document.getElementById('albumName').innerText = cur.album_name;
+
+                // Update Controls Icon
+                playPauseButton.innerHTML = cur.is_playing ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
+
+                // --- UPDATE GLOBAL STATE FOR LOCAL PROGRESS TIMER ---
+                currentProgress = cur.progress;
+                currentDuration = cur.duration;
+                lastUpdateTimestamp = Date.now();
+                
+                // If the controls are currently visible, update the bar with the fresh data
+                if (document.getElementById('controlPanel').classList.contains('visible')) {
+                    localUpdateProgress();
+                }
+
+                // --- QUEUE Ticker Update ---
+                const ticker = document.getElementById('queueTicker');
+                let queueHTML = "";
+                data.queue.forEach(t => {
+                    queueHTML += `<div class="ticker-item"><strong>${t.name}</strong> - ${t.artist}</div>`;
+                });
+                
+                if (ticker.innerHTML !== queueHTML) {
+                   ticker.innerHTML = queueHTML;
+                }
+
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const visualStack = document.getElementById('visualStack'); 
+            
+            if (visualStack) {
+                // Attach swipe listeners to the main area
+                visualStack.addEventListener('touchstart', handleTouchStart, false);        
+                visualStack.addEventListener('touchend', handleTouchEnd, false);
+            }
+            
+            // Attach swipe listeners to the gallery area for closing
+            const gallery = document.getElementById('artistGallery');
+            if (gallery) {
+                gallery.addEventListener('touchstart', handleTouchStart, false);        
+                gallery.addEventListener('touchend', handleTouchEnd, false);
+            }
+            
+            updateDisplay();
+            setInterval(updateDisplay, 5000); 
+        });
+        
+    </script>
+</body>
+</html>
