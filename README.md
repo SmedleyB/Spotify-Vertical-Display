@@ -1,6 +1,6 @@
 # 🎶 Spotify Vertical Now Playing Display
 
-This project is a clean, vertical, and highly aesthetic "Now Playing" display for Spotify, designed specifically for use on portrait-oriented screens, smart displays, or kiosks. It uses Python (Flask) for backend Spotify authentication and data fetching, combined with HTML/CSS/JavaScript for a dynamic, modern frontend experience.
+This project is a clean, vertical "Now Playing" display for Spotify, designed specifically for use on portrait-oriented screens, smart displays, or kiosks (I built it to use on a 1080x1920 AIO toucscreen PC). It uses Python (Flask) for backend Spotify authentication and data fetching, combined with HTML/CSS/JavaScript for a dynamic, modern frontend experience.
 
 -----
 
