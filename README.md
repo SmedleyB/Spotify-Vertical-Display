@@ -12,6 +12,17 @@ This project is a clean, vertical, and highly aesthetic "Now Playing" display fo
   * **Scrolling Queue:** Displays the "Next Up" queue in a clean, horizontally scrolling ticker at the bottom.
   * **Rate Limit Optimized:** Uses a client-side progress bar and a 5-second polling interval to minimize API calls and avoid Spotify rate limiting.
 
+
+Gestures:
+* Tap Album Art: Toggles Play/Pause.
+* Tap Artist Photo: Toggles the visibility of the Playback Controls (Next, Previous, Play/Pause).
+* Swipe Left/Right (Main Screen): Next/Previous Track.
+* Swipe Down (Main Screen): Opens the Artist Photo Gallery.
+* Swipe Up (Main Screen): Opens/Closes the Playback Controls.
+* Swipe Up (Gallery Open): Closes the Artist Photo Gallery.
+* Artist Gallery: Fetches and displays fanart/photos from TheAudioDB using a CORS proxy.
+* Minimal Queue: A scrolling ticker showing the next songs in the queue.
+
 -----
 
 ## 💻 Setup and Installation
