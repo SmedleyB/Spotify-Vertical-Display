@@ -44,7 +44,7 @@ Before starting, you need the following installed:
 Clone this repository to your local machine:
 
 ```bash
-git clone https://github.com/YourUsername/Spotify-Vertical-Display.git
+git clone https://github.com/SmedleyB/Spotify-Vertical-Display.git
 cd Spotify-Vertical-Display
 ```
 
@@ -64,23 +64,45 @@ You must register an application with Spotify to get the necessary credentials:
 
 ### Step 3: Set Up Environment Variables
 
-Edit `app.py` and add your credentials, or don't edit it and create a .env file instead:
+Create a `.env` file in the project root directory (or set environment variables in your system):
 
 ```bash
-SPOTIPY_CLIENT_ID='YOUR_CLIENT_ID_FROM_SPOTIFY'
-SPOTIPY_CLIENT_SECRET='YOUR_CLIENT_SECRET_FROM_SPOTIFY'
-SPOTIPY_REDIRECT_URI='http://127.0.0.1:5000/callback'
+cp .env.example .env
 ```
+
+Then edit the `.env` file and add your Spotify credentials:
+
+```bash
+SPOTIPY_CLIENT_ID=your_client_id_here
+SPOTIPY_CLIENT_SECRET=your_client_secret_here
+SPOTIPY_REDIRECT_URI=http://127.0.0.1:5000/callback
+```
+
+**Note:** The `.env` file is ignored by git (via `.gitignore`) to protect your credentials.
 
 ### Step 4: Install Dependencies
 
-Install the required Python packages using `pip`. You will need `Flask` for the server and `Spotipy` for the Spotify API interaction.
+It's recommended to use a virtual environment:
 
 ```bash
-pip install flask python-dotenv spotipy
+# Create a virtual environment
+python -m venv .venv
+
+# Activate the virtual environment
+# On Windows:
+.venv\Scripts\activate
+# On macOS/Linux:
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-*(Note: If you are using a virtual environment, activate it first.)*
+Alternatively, install dependencies directly:
+
+```bash
+pip install -r requirements.txt
+```
 
 -----
 
