@@ -778,8 +778,14 @@
 
                 // Update Images
                 const artistImg = document.getElementById('artistImg');
-                artistImg.crossOrigin = 'anonymous';
-                artistImg.src = cur.artist_image || cur.album_art; 
+                const newArtistSrc = cur.artist_image || cur.album_art;
+                
+                // Only update if the src is different to avoid CORS issues with already-loaded images
+                if (artistImg.src !== newArtistSrc) {
+                    artistImg.crossOrigin = 'anonymous';
+                    artistImg.src = newArtistSrc;
+                }
+                
                 document.getElementById('bgLayer').style.backgroundImage = `url('${cur.album_art}')`;
 
                 // Update Text

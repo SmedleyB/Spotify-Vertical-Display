@@ -164,7 +164,7 @@ def get_data():
             
             for track in queue_list[:5]:
                 track_images = safe_get(track, 'album', 'images', default=[])
-                # Get last (smallest) image if available
+                # Get last image (smallest size) if available
                 art = safe_get(track_images[-1] if track_images else None, 'url', default="")
                 track_artists = safe_get(track, 'artists', default=[])
                 
