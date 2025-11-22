@@ -325,14 +325,36 @@
             background-color: rgba(0, 0, 0, 0.5); 
             backdrop-filter: blur(5px);
             z-index: 11;
+            position: relative;
         }
 
-        .gallery-header i {
-            font-size: 2vh;
-            display: block;
-            margin-bottom: 5px;
+        .gallery-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 3vh;
             color: var(--main-color-dynamic);
             cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.3);
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        
+        .gallery-close-btn:hover {
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+        
+        .gallery-close-btn:active {
+            transform: scale(0.9);
+        }
+        
+        .gallery-header h2 {
+            margin: 0;
         }
 
         .gallery-content {
@@ -404,8 +426,10 @@
     </div>
     
     <div class="artist-gallery" id="artistGallery">
-        <div class="gallery-header" onclick="closeGallery()">
-            <i class="fa-solid fa-chevron-down"></i>
+        <div class="gallery-header">
+            <button class="gallery-close-btn" onclick="closeGallery()" aria-label="Close gallery">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
             <h2 id="galleryArtistName"></h2>
         </div>
         <div class="gallery-content" id="galleryContent">
@@ -694,39 +718,18 @@
                 const gallery = document.getElementById('artistGallery');
                 const isGalleryOpen = gallery.classList.contains('open');
 
-                // NOTE: Swipes are now inverted for the gallery interaction to match the new animation:
-                // Swipe DOWN opens (pulls down from the top).
-                // Swipe UP closes (pushes back up to the top).
-
                 if (deltaY > 0) {
-                    // Swipe Down -> Open Gallery (if closed) OR Close Gallery (if open, pushing it back up)
-                    if (isGalleryOpen) {
-                        // The gallery is open (slid down), so swipe down again to close it (if desired, though usually swipe up closes top-down)
-                        // STICKING TO USER INTENT: Keep swipe down/up same for controls, but invert for gallery open/close to match visual direction.
-                        // However, a swipe DOWN is now a logical open action (pulling down from the top)
-                        // Let's re-map the vertical gestures for consistency with the *new* top-down animation:
-                        
-                        // Swipe Down: Opens gallery from the top (Pulls it down)
-                        if (!isGalleryOpen) {
-                            openGallery();
-                        } else {
-                            // If open, maybe minimize or close it if the user missed the swipe up.
-                            // To keep it simple, if open, ignore swipe down.
-                        }
-                    } else {
-                        // Swipe Down on main screen -> Open Gallery
+                    // Swipe Down -> Open Gallery (if closed)
+                    if (!isGalleryOpen) {
                         openGallery();
                     }
+                    // If gallery is open, swipe down does nothing (only X button closes)
                 } else if (deltaY < 0) {
-                    // Swipe Up -> Close Gallery (if open) OR Toggle Controls (if closed)
-
-                    if (isGalleryOpen) {
-                        // Swipe up closes (pushes it back to the top)
-                        closeGallery();
-                    } else {
-                        // Swipe Up (on main screen) - Toggle controls
+                    // Swipe Up -> Toggle Controls (only when gallery is closed)
+                    if (!isGalleryOpen) {
                         toggleControls();
                     }
+                    // If gallery is open, swipe up does nothing (only X button closes)
                 }
             }
             
