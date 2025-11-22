@@ -54,7 +54,7 @@ You must register an application with Spotify to get the necessary credentials:
 4.  Once the app is created, locate and save your **Client ID** and **Client Secret**.
 5.  Click **"Edit Settings"** and add a **Redirect URI**. This must be set to:
     ```
-    http://localhost:5000/callback
+    http://127.0.0.1:5000/callback
     ```
     (Ensure you use HTTP, not HTTPS, for local development.)
 
