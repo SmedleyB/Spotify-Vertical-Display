@@ -60,14 +60,12 @@ You must register an application with Spotify to get the necessary credentials:
 
 ### Step 3: Set Up Environment Variables
 
-Create a file named **`.env`** in the root directory of the project (where your `app.py` is located) and add your credentials:
+Edit `app.py` and add your credentials, or don't edit it and create a .env file instead:
 
 ```bash
-# .env file
-
 SPOTIPY_CLIENT_ID='YOUR_CLIENT_ID_FROM_SPOTIFY'
 SPOTIPY_CLIENT_SECRET='YOUR_CLIENT_SECRET_FROM_SPOTIFY'
-SPOTIPY_REDIRECT_URI='http://localhost:5000/callback'
+SPOTIPY_REDIRECT_URI='http://127.0.0.1:5000/callback'
 ```
 
 ### Step 4: Install Dependencies
@@ -99,7 +97,7 @@ The server will start, usually running on port 5000. You should see an output si
 
 ### 2\. Authentication
 
-1.  Open your browser and navigate to: `http://localhost:5000`
+1.  Open your browser and navigate to: `http://127.0.0.1:5000`
 2.  The first time you load the page, you will be redirected to the **Spotify login page**.
 3.  Log in and approve the necessary permissions.
 4.  You will be redirected back to the display, which should now be active.
