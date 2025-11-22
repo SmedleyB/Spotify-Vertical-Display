@@ -44,7 +44,7 @@ Before starting, you need the following installed:
 Clone this repository to your local machine:
 
 ```bash
-git clone https://github.com/YourUsername/Spotify-Vertical-Display.git
+git clone https://github.com/SmedleyB/Spotify-Vertical-Display.git
 cd Spotify-Vertical-Display
 ```
 
