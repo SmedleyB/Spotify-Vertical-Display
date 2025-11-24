@@ -3,11 +3,20 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import os
 from dotenv import load_dotenv
+import logging
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
+
+# Configure logging
+DEBUG_MODE = os.getenv('DEBUG', 'False').lower() == 'true'
+logging.basicConfig(
+    level=logging.DEBUG if DEBUG_MODE else logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # --- CREDENTIALS FROM ENVIRONMENT ---
 SPOTIPY_CLIENT_ID = os.getenv('SPOTIPY_CLIENT_ID')
@@ -44,7 +53,7 @@ def get_spotify_client():
         
         return spotipy.Spotify(auth_manager=auth_manager)
     except Exception as e:
-        print(f"Error getting Spotify client: {e}")
+        logger.error(f"Error getting Spotify client: {e}")
         return None
 
 def safe_get(dictionary, *keys, default=None):
@@ -140,13 +149,13 @@ def get_data():
                 if first_image:
                     artist_img_url = safe_get(first_image, 'url', default="")
                     if artist_img_url:
-                        print(f"Artist image found for {artist_name}: {artist_img_url[:50]}...")
+                        logger.debug(f"Artist image found for {artist_name}: {artist_img_url[:50]}...")
                     else:
-                        print(f"Artist {artist_name} has image object but no URL")
+                        logger.debug(f"Artist {artist_name} has image object but no URL")
                 else:
-                    print(f"No images available for artist {artist_name}")
+                    logger.debug(f"No images available for artist {artist_name}")
             except Exception as e:
-                print(f"Error fetching artist data for {artist_name}: {e}")
+                logger.error(f"Error fetching artist data for {artist_name}: {e}")
 
         # Safely get album art
         album_images = safe_get(item, 'album', 'images', default=[])
@@ -182,12 +191,12 @@ def get_data():
                     'art': art
                 })
         except Exception as e:
-            print(f"Error fetching queue: {e}")
+            logger.error(f"Error fetching queue: {e}")
 
         return jsonify({'current': current, 'queue': next_tracks})
 
     except Exception as e:
-        print(f"Error in /data: {e}")
+        logger.error(f"Error in /data: {e}")
         return jsonify({'playing': False, 'error': str(e)})
 
 @app.route('/control', methods=['POST'])
@@ -238,7 +247,7 @@ def control():
         return jsonify({'ok': False, 'error': str(e)}), status_code
     
     except Exception as e:
-        print(f"Error in /control: {e}")
+        logger.error(f"Error in /control: {e}")
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 # --- LEGACY ENDPOINTS (kept for backward compatibility) ---
