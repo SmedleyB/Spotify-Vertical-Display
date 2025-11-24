@@ -136,9 +136,17 @@ def get_data():
                 artist_data = sp_client.artist(artist_id)
                 # Safely get first image or empty string
                 artist_images = safe_get(artist_data, 'images', default=[])
-                artist_img_url = safe_get(safe_first(artist_images), 'url', default="")
+                first_image = safe_first(artist_images)
+                if first_image:
+                    artist_img_url = safe_get(first_image, 'url', default="")
+                    if artist_img_url:
+                        print(f"Artist image found for {artist_name}: {artist_img_url[:50]}...")
+                    else:
+                        print(f"Artist {artist_name} has image object but no URL")
+                else:
+                    print(f"No images available for artist {artist_name}")
             except Exception as e:
-                print(f"Error fetching artist data: {e}")
+                print(f"Error fetching artist data for {artist_name}: {e}")
 
         # Safely get album art
         album_images = safe_get(item, 'album', 'images', default=[])

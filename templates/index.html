@@ -368,6 +368,31 @@
             gap: 15px;
         }
         
+        .artist-bio {
+            width: 90vw;
+            max-width: 880px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-left: 4px solid var(--main-color-dynamic);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .artist-bio h3 {
+            margin: 0 0 15px 0;
+            font-size: 2.5vh;
+            color: var(--main-color-dynamic);
+            font-weight: 700;
+        }
+        
+        .artist-bio p {
+            margin: 0;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 1.8vh;
+            text-align: left;
+        }
+        
         .gallery-content img {
             width: 90vw; /* Use full width on mobile */
             max-width: 880px; /* Set a max width for large screens */
@@ -594,14 +619,14 @@
         // --- CORRECTED GALLERY FUNCTIONS with AudioDB CORS Fix (unchanged) ---
         
         /**
-         * Fetches and displays artist photos from TheAudioDB using a CORS proxy.
+         * Fetches and displays artist photos and biography from TheAudioDB using a CORS proxy.
          */
         async function fetchArtistPhotos(artistName) {
             const galleryContent = document.getElementById('galleryContent');
             const galleryArtistName = document.getElementById('galleryArtistName');
             
             galleryArtistName.textContent = artistName;
-            galleryContent.innerHTML = `<p class="api-note">Loading photos for ${artistName}...</p>`;
+            galleryContent.innerHTML = `<p class="api-note">Loading artist information for ${artistName}...</p>`;
 
             // TheAudioDB endpoint
             const audioDbUrl = `https://theaudiodb.com/api/v1/json/123/search.php?s=${encodeURIComponent(artistName)}`;
@@ -622,11 +647,32 @@
                 const data = JSON.parse(proxyData.contents); 
                 
                 if (!data.artists || data.artists.length === 0) {
-                    galleryContent.innerHTML = `<p class="api-note">No fanart found for **${artistName}** on TheAudioDB.</p>`;
+                    galleryContent.innerHTML = `<p class="api-note">No information found for **${artistName}** on TheAudioDB.</p>`;
                     return;
                 }
                 
                 const artistData = data.artists[0];
+                let contentHTML = '';
+                
+                // Add biography if available
+                const biography = artistData.strBiographyEN || artistData.strBiography;
+                if (biography && biography.trim() !== '') {
+                    // Truncate biography if too long (keep first ~500 words)
+                    let bioText = biography.trim();
+                    const words = bioText.split(' ');
+                    if (words.length > 500) {
+                        bioText = words.slice(0, 500).join(' ') + '...';
+                    }
+                    
+                    contentHTML += `
+                        <div class="artist-bio">
+                            <h3>Biography</h3>
+                            <p>${bioText}</p>
+                        </div>
+                    `;
+                }
+                
+                // Add images
                 const imageKeys = [
                     'strArtistFanart', 
                     'strArtistFanart2', 
@@ -644,16 +690,18 @@
                         count++;
                     }
                 });
+                
+                contentHTML += imageHTML;
 
-                if (imageHTML === '') {
-                    galleryContent.innerHTML = `<p class="api-note">No fanart found for **${artistName}** on TheAudioDB.</p>`;
+                if (contentHTML === '') {
+                    galleryContent.innerHTML = `<p class="api-note">No information or fanart found for **${artistName}** on TheAudioDB.</p>`;
                 } else {
-                    galleryContent.innerHTML = imageHTML;
+                    galleryContent.innerHTML = contentHTML;
                 }
 
             } catch (e) {
                 console.error("TheAudioDB fetch failed:", e);
-                galleryContent.innerHTML = `<p class="api-note">Error fetching photos. Please check your connection or TheAudioDB status. (CORS fix failed)</p>`;
+                galleryContent.innerHTML = `<p class="api-note">Error fetching artist information. Please check your connection or TheAudioDB status.</p>`;
             }
         }
 
@@ -782,7 +830,12 @@
 
                 // Update Images
                 const artistImg = document.getElementById('artistImg');
-                const newArtistSrc = cur.artist_image || cur.album_art;
+                
+                // Use artist image if available, otherwise use album art as fallback
+                // Note: artist_image comes from Spotify's artist API
+                const newArtistSrc = cur.artist_image && cur.artist_image.trim() !== '' 
+                    ? cur.artist_image 
+                    : cur.album_art;
                 
                 // Only update if the src is different to avoid CORS issues with already-loaded images
                 if (artistImg.src !== newArtistSrc) {
