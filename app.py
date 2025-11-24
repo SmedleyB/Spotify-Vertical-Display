@@ -125,7 +125,10 @@ def get_data():
         item = playback['item']
         
         # Defensive access for artist data
-        artist_id = safe_get(item, 'artists', 0, 'id')
+        artists = safe_get(item, 'artists', default=[])
+        first_artist = safe_first(artists)
+        artist_id = safe_get(first_artist, 'id') if first_artist else None
+        artist_name = safe_get(first_artist, 'name', default="Unknown Artist") if first_artist else "Unknown Artist"
         artist_img_url = ""
         
         if artist_id:
@@ -140,9 +143,6 @@ def get_data():
         # Safely get album art
         album_images = safe_get(item, 'album', 'images', default=[])
         album_art = safe_get(safe_first(album_images), 'url', default="")
-        
-        # Safely get artist name
-        artist_name = safe_get(item, 'artists', 0, 'name', default="Unknown Artist")
 
         current = {
             'playing': True,
