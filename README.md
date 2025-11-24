@@ -3,8 +3,9 @@
 <img width="360" height="640" alt="Untitled" src="https://github.com/user-attachments/assets/396f9078-2b40-407f-bc00-713eb01f376b" />
 <img width="360" height="640" alt="Untitled 2png" src="https://github.com/user-attachments/assets/217bd203-107c-46cc-b857-f4b07ae82965" />
 <img width="360" height="640" alt="Untitled3" src="https://github.com/user-attachments/assets/6e59265e-2435-4d45-82bf-08cc8391f92b" />
-
-This project is a clean, vertical "Now Playing" display for Spotify, designed specifically for use on portrait-oriented screens, smart displays, or kiosks (I built it to use on a 1080x1920 AIO toucscreen PC). It uses Python (Flask) for backend Spotify authentication and data fetching, combined with HTML/CSS/JavaScript for a dynamic, modern frontend experience.
+<br>
+<br>
+This project is a clean, vertical "Now Playing" display for Spotify, designed specifically for use on portrait-oriented screens, smart displays, or kiosks (I built it to use on a 1080x1920 AIO toucscreen PC). It uses Python (Flask) for backend Spotify authentication and data fetching, combined with HTML/CSS/JavaScript for a dynamic, modern frontend experience. IT'S ALL AI GENERATED.
 
 -----
 
@@ -13,19 +14,24 @@ This project is a clean, vertical "Now Playing" display for Spotify, designed sp
   * **Vertical, Full-Screen Layout:** Optimized for portrait displays (e.g., Raspberry Pi screens, tablets).
   * **Dynamic Color Scheme:** Extracts the dominant color from the album art and uses it to tint the background and UI elements.
   * **Hidden Controls:** Playback controls (Previous, Play/Pause, Next) and the progress bar are hidden by default and appear when the **Artist Image** is clicked or tapped.
+  * **Artist Gallery:** Tap the artist image to open a gallery featuring:
+    - Artist biography from TheAudioDB
+    - Professional artist photos and fanart
+    - Clean, scrollable interface
   * **Scrolling Queue:** Displays the "Next Up" queue in a clean, horizontally scrolling ticker at the bottom.
   * **Rate Limit Optimized:** Uses a client-side progress bar and a 5-second polling interval to minimize API calls and avoid Spotify rate limiting.
+  * **Secure Authentication:** Environment-based credentials with persistent OAuth token caching.
 
 
 Gestures:
-* Tap Album Art: Toggles Play/Pause.
-* Tap Artist Photo: Toggles the visibility of the Playback Controls (Next, Previous, Play/Pause).
-* Swipe Left/Right (Main Screen): Next/Previous Track.
-* Swipe Down (Main Screen): Opens the Artist Photo Gallery.
-* Swipe Up (Main Screen): Opens/Closes the Playback Controls.
-* Swipe Up (Gallery Open): Closes the Artist Photo Gallery.
-* Artist Gallery: Fetches and displays fanart/photos from TheAudioDB using a CORS proxy.
-* Minimal Queue: A scrolling ticker showing the next songs in the queue.
+* **Tap Album Art:** Toggles Play/Pause.
+* **Tap Artist Photo:** Toggles the visibility of the Playback Controls (Next, Previous, Play/Pause).
+* **Swipe Left/Right (Main Screen):** Next/Previous Track.
+* **Swipe Down (Main Screen):** Opens the Artist Gallery with biography and photos.
+* **Swipe Up (Main Screen):** Opens/Closes the Playback Controls.
+* **Click X Button (Gallery):** Closes the Artist Gallery.
+* **Artist Gallery:** Fetches and displays artist biography and fanart/photos from TheAudioDB.
+* **Minimal Queue:** A scrolling ticker showing the next songs in the queue.
 
 -----
 
@@ -64,23 +70,45 @@ You must register an application with Spotify to get the necessary credentials:
 
 ### Step 3: Set Up Environment Variables
 
-Edit `app.py` and add your credentials, or don't edit it and create a .env file instead:
+Create a `.env` file in the project root directory (or set environment variables in your system):
 
 ```bash
-SPOTIPY_CLIENT_ID='YOUR_CLIENT_ID_FROM_SPOTIFY'
-SPOTIPY_CLIENT_SECRET='YOUR_CLIENT_SECRET_FROM_SPOTIFY'
-SPOTIPY_REDIRECT_URI='http://127.0.0.1:5000/callback'
+cp .env.example .env
 ```
+
+Then edit the `.env` file and add your Spotify credentials:
+
+```bash
+SPOTIPY_CLIENT_ID=your_client_id_here
+SPOTIPY_CLIENT_SECRET=your_client_secret_here
+SPOTIPY_REDIRECT_URI=http://127.0.0.1:5000/callback
+```
+
+**Note:** The `.env` file is ignored by git (via `.gitignore`) to protect your credentials.
 
 ### Step 4: Install Dependencies
 
-Install the required Python packages using `pip`. You will need `Flask` for the server and `Spotipy` for the Spotify API interaction.
+It's recommended to use a virtual environment:
 
 ```bash
-pip install flask python-dotenv spotipy
+# Create a virtual environment
+python -m venv .venv
+
+# Activate the virtual environment
+# On Windows:
+.venv\Scripts\activate
+# On macOS/Linux:
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-*(Note: If you are using a virtual environment, activate it first.)*
+Alternatively, install dependencies directly:
+
+```bash
+pip install -r requirements.txt
+```
 
 -----
 
@@ -114,12 +142,20 @@ The server will start, usually running on port 5000. You should see an output si
 
 ### Controls
 
-The playback controls and progress bar are hidden. To reveal them:
+The playback controls and progress bar are hidden by default. To reveal them:
 
 1.  **Click/Tap** the **circular Artist Image**.
 2.  The controls will fade in.
 3.  The progress bar will start updating locally every **0.5 seconds** for smooth animation.
 4.  To hide the controls, click the Artist Image again.
+
+### Artist Gallery
+
+Swipe down on the main screen or tap the artist image to open the Artist Gallery, which features:
+
+* **Artist Biography:** Curated biography from TheAudioDB
+* **Professional Photos:** High-quality artist photos and fanart
+* **Easy Navigation:** Click the X button in the top-right to close
 
 ### Customization
 
@@ -130,3 +166,32 @@ All styling and frontend logic is contained within the `templates/index.html` fi
     setInterval(updateDisplay, 5000); // Change 5000 to a higher number (e.g., 10000) if you experience rate limiting.
     ```
   * **Aesthetics:** Adjust colors, fonts, and layout using the CSS within the `<style>` tags in `index.html`.
+
+-----
+
+## 🔒 Security Features
+
+* **No Hardcoded Credentials:** All sensitive information loaded from environment variables
+* **Token Caching:** Secure OAuth token storage with automatic refresh
+* **Git Protection:** `.env` and token cache files automatically ignored by git
+* **Defensive API Access:** Robust error handling prevents crashes from missing data
+
+-----
+
+## 🛠️ Troubleshooting
+
+### "Unknown Artist" in Gallery
+If the artist gallery shows "Unknown Artist", check the console logs. The app includes debug logging to help diagnose issues with Spotify API responses.
+
+### Rate Limiting
+If you experience Spotify API rate limiting:
+1. Increase the polling interval in `templates/index.html` (line ~890)
+2. Change `setInterval(updateDisplay, 5000)` to a higher value (e.g., 10000)
+
+### Authentication Issues
+1. Verify your Spotify Developer App has the correct Redirect URI: `http://127.0.0.1:5000/callback`
+2. Check that your `.env` file has the correct credentials
+3. Delete `.spotify-token-cache` and re-authenticate if tokens are corrupted
+
+### No Playback Showing
+Ensure you have an active Spotify playback session on any device (phone, desktop, etc.) before loading the display.

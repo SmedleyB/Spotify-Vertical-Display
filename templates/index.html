@@ -325,14 +325,37 @@
             background-color: rgba(0, 0, 0, 0.5); 
             backdrop-filter: blur(5px);
             z-index: 11;
+            position: relative;
         }
 
-        .gallery-header i {
-            font-size: 2vh;
-            display: block;
-            margin-bottom: 5px;
+        .gallery-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 3vh;
             color: var(--main-color-dynamic);
             cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            padding: 0;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        
+        .gallery-close-btn:hover {
+            opacity: 0.7;
+        }
+        
+        .gallery-close-btn:active {
+            transform: scale(0.9);
+        }
+        
+        .gallery-header h2 {
+            margin: 0;
         }
 
         .gallery-content {
@@ -343,6 +366,35 @@
             flex-direction: column; /* Column layout for larger images */
             align-items: center; /* Center images in the column */
             gap: 15px;
+        }
+        
+        .artist-bio {
+            width: 90vw;
+            max-width: 880px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-left: 4px solid var(--main-color-dynamic);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .artist-bio h3 {
+            margin: 0 0 15px 0;
+            font-size: 2.5vh;
+            color: var(--main-color-dynamic);
+            font-weight: 700;
+        }
+        
+        .artist-bio p {
+            margin: 0 0 12px 0;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 1.8vh;
+            text-align: left;
+        }
+        
+        .artist-bio p:last-child {
+            margin-bottom: 0;
         }
         
         .gallery-content img {
@@ -375,7 +427,7 @@
 
     <div class="visual-stack" id="visualStack">
         <div class="album-art-container" onclick="sendControl('toggle', this)">
-            <img src="" id="albumImg" class="album-img" crossorigin="anonymous"> 
+            <img src="" id="albumImg" class="album-img"> 
         </div>
 
         <div class="info-container">
@@ -404,8 +456,10 @@
     </div>
     
     <div class="artist-gallery" id="artistGallery">
-        <div class="gallery-header" onclick="closeGallery()">
-            <i class="fa-solid fa-chevron-down"></i>
+        <div class="gallery-header">
+            <button class="gallery-close-btn" onclick="closeGallery()" aria-label="Close gallery">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
             <h2 id="galleryArtistName"></h2>
         </div>
         <div class="gallery-content" id="galleryContent">
@@ -487,20 +541,31 @@
         }
 
         /**
-         * Sends a control signal to the Flask backend and removes button focus.
+         * Sends a control signal to the Flask backend using the unified /control endpoint.
          */
         function sendControl(action, element) {
-            let endpoint;
-            if (action === 'previous') endpoint = '/previous_track';
-            else if (action === 'next') endpoint = '/next_track';
-            else if (action === 'toggle') endpoint = '/toggle_playback';
-            else return;
-
-            fetch(endpoint, {
+            fetch('/control', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-            }).then(() => {
-                setTimeout(updateDisplay, 1000); 
+                body: JSON.stringify({ action: action })
+            })
+            .then(response => {
+                if (response.status === 401 || response.status === 403) {
+                    // Redirect to authorization if unauthenticated
+                    window.location.href = '/authorize';
+                    return;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && !data.ok) {
+                    console.error('Control action failed:', data.error);
+                }
+                // Update display after a short delay
+                setTimeout(updateDisplay, 1000);
+            })
+            .catch(error => {
+                console.error('Control request failed:', error);
             });
             
             if (element) {
@@ -519,6 +584,10 @@
         
         function updateDynamicColor(imgUrl) {
             const img = document.getElementById('albumImg');
+            
+            // Set crossOrigin before setting src for ColorThief CORS handling
+            img.crossOrigin = 'anonymous';
+            
             img.onload = () => {
                 try {
                     const palette = colorThief.getPalette(img, 5);
@@ -534,10 +603,19 @@
                     document.documentElement.style.setProperty('--bg-color-dynamic', darkColorHex);
                 } catch (e) {
                     console.error("ColorThief failed:", e);
+                    // Fallback to default colors
                     document.documentElement.style.setProperty('--main-color-dynamic', '#FFFFFF');
                     document.documentElement.style.setProperty('--bg-color-dynamic', '#000000');
                 }
             };
+            
+            img.onerror = () => {
+                console.error("Image failed to load:", imgUrl);
+                // Fallback to default colors
+                document.documentElement.style.setProperty('--main-color-dynamic', '#FFFFFF');
+                document.documentElement.style.setProperty('--bg-color-dynamic', '#000000');
+            };
+            
             img.src = imgUrl; 
         }
         // --- End Color Helper Functions ---
@@ -545,14 +623,14 @@
         // --- CORRECTED GALLERY FUNCTIONS with AudioDB CORS Fix (unchanged) ---
         
         /**
-         * Fetches and displays artist photos from TheAudioDB using a CORS proxy.
+         * Fetches and displays artist photos and biography from TheAudioDB using a CORS proxy.
          */
         async function fetchArtistPhotos(artistName) {
             const galleryContent = document.getElementById('galleryContent');
             const galleryArtistName = document.getElementById('galleryArtistName');
             
             galleryArtistName.textContent = artistName;
-            galleryContent.innerHTML = `<p class="api-note">Loading photos for ${artistName}...</p>`;
+            galleryContent.innerHTML = `<p class="api-note">Loading artist information for ${artistName}...</p>`;
 
             // TheAudioDB endpoint
             const audioDbUrl = `https://theaudiodb.com/api/v1/json/123/search.php?s=${encodeURIComponent(artistName)}`;
@@ -573,11 +651,48 @@
                 const data = JSON.parse(proxyData.contents); 
                 
                 if (!data.artists || data.artists.length === 0) {
-                    galleryContent.innerHTML = `<p class="api-note">No fanart found for **${artistName}** on TheAudioDB.</p>`;
+                    galleryContent.innerHTML = `<p class="api-note">No information found for **${artistName}** on TheAudioDB.</p>`;
                     return;
                 }
                 
                 const artistData = data.artists[0];
+                let contentHTML = '';
+                
+                // Add biography if available
+                const biography = artistData.strBiographyEN || artistData.strBiography;
+                if (biography && biography.trim() !== '') {
+                    // Truncate biography if too long (keep first ~500 words)
+                    let bioText = biography.trim();
+                    const words = bioText.split(' ');
+                    if (words.length > 500) {
+                        bioText = words.slice(0, 500).join(' ') + '...';
+                    }
+                    
+                    // Helper function to escape HTML to prevent XSS
+                    const escapeHtml = (text) => {
+                        const div = document.createElement('div');
+                        div.textContent = text;
+                        return div.innerHTML;
+                    };
+                    
+                    // Convert newlines to paragraphs for better formatting
+                    // Split on two or more consecutive newlines (paragraph breaks)
+                    const paragraphs = bioText
+                        .split(/\n\n+/)
+                        .map(para => para.trim())
+                        .filter(para => para.length > 0)
+                        .map(para => `<p>${escapeHtml(para).replace(/\n/g, '<br>')}</p>`)  // Single newlines become <br>
+                        .join('');
+                    
+                    contentHTML += `
+                        <div class="artist-bio">
+                            <h3>Biography</h3>
+                            ${paragraphs}
+                        </div>
+                    `;
+                }
+                
+                // Add images
                 const imageKeys = [
                     'strArtistFanart', 
                     'strArtistFanart2', 
@@ -595,16 +710,18 @@
                         count++;
                     }
                 });
+                
+                contentHTML += imageHTML;
 
-                if (imageHTML === '') {
-                    galleryContent.innerHTML = `<p class="api-note">No fanart found for **${artistName}** on TheAudioDB.</p>`;
+                if (contentHTML === '') {
+                    galleryContent.innerHTML = `<p class="api-note">No information or fanart found for **${artistName}** on TheAudioDB.</p>`;
                 } else {
-                    galleryContent.innerHTML = imageHTML;
+                    galleryContent.innerHTML = contentHTML;
                 }
 
             } catch (e) {
                 console.error("TheAudioDB fetch failed:", e);
-                galleryContent.innerHTML = `<p class="api-note">Error fetching photos. Please check your connection or TheAudioDB status. (CORS fix failed)</p>`;
+                galleryContent.innerHTML = `<p class="api-note">Error fetching artist information. Please check your connection or TheAudioDB status.</p>`;
             }
         }
 
@@ -670,39 +787,18 @@
                 const gallery = document.getElementById('artistGallery');
                 const isGalleryOpen = gallery.classList.contains('open');
 
-                // NOTE: Swipes are now inverted for the gallery interaction to match the new animation:
-                // Swipe DOWN opens (pulls down from the top).
-                // Swipe UP closes (pushes back up to the top).
-
                 if (deltaY > 0) {
-                    // Swipe Down -> Open Gallery (if closed) OR Close Gallery (if open, pushing it back up)
-                    if (isGalleryOpen) {
-                        // The gallery is open (slid down), so swipe down again to close it (if desired, though usually swipe up closes top-down)
-                        // STICKING TO USER INTENT: Keep swipe down/up same for controls, but invert for gallery open/close to match visual direction.
-                        // However, a swipe DOWN is now a logical open action (pulling down from the top)
-                        // Let's re-map the vertical gestures for consistency with the *new* top-down animation:
-                        
-                        // Swipe Down: Opens gallery from the top (Pulls it down)
-                        if (!isGalleryOpen) {
-                            openGallery();
-                        } else {
-                            // If open, maybe minimize or close it if the user missed the swipe up.
-                            // To keep it simple, if open, ignore swipe down.
-                        }
-                    } else {
-                        // Swipe Down on main screen -> Open Gallery
+                    // Swipe Down -> Open Gallery (if closed)
+                    if (!isGalleryOpen) {
                         openGallery();
                     }
+                    // If gallery is open, swipe down does nothing (only X button closes)
                 } else if (deltaY < 0) {
-                    // Swipe Up -> Close Gallery (if open) OR Toggle Controls (if closed)
-
-                    if (isGalleryOpen) {
-                        // Swipe up closes (pushes it back to the top)
-                        closeGallery();
-                    } else {
-                        // Swipe Up (on main screen) - Toggle controls
+                    // Swipe Up -> Toggle Controls (only when gallery is closed)
+                    if (!isGalleryOpen) {
                         toggleControls();
                     }
+                    // If gallery is open, swipe up does nothing (only X button closes)
                 }
             }
             
@@ -715,10 +811,23 @@
         async function updateDisplay() {
             try {
                 const response = await fetch('/data');
+                
+                // Handle authentication errors
+                if (response.status === 401 || response.status === 403) {
+                    window.location.href = '/authorize';
+                    return;
+                }
+                
                 const data = await response.json();
                 const playPauseButton = document.getElementById('playPauseButton');
 
                 if (data.playing === false) {
+                    // Check if it's an authentication error
+                    if (data.error === 'unauthenticated') {
+                        window.location.href = '/authorize';
+                        return;
+                    }
+                    
                     document.getElementById('trackName').innerText = "PAUSED";
                     document.getElementById('artistName').innerText = "";
                     document.getElementById('albumName').innerText = "";
@@ -740,7 +849,20 @@
                 }
 
                 // Update Images
-                document.getElementById('artistImg').src = cur.artist_image || cur.album_art; 
+                const artistImg = document.getElementById('artistImg');
+                
+                // Use artist image if available, otherwise use album art as fallback
+                // Note: artist_image comes from Spotify's artist API
+                const newArtistSrc = cur.artist_image && cur.artist_image.trim() !== '' 
+                    ? cur.artist_image 
+                    : cur.album_art;
+                
+                // Only update if the src is different to avoid CORS issues with already-loaded images
+                if (artistImg.src !== newArtistSrc) {
+                    artistImg.crossOrigin = 'anonymous';
+                    artistImg.src = newArtistSrc;
+                }
+                
                 document.getElementById('bgLayer').style.backgroundImage = `url('${cur.album_art}')`;
 
                 // Update Text
