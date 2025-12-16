@@ -43,18 +43,46 @@ def make_auth_manager():
 
 def get_spotify_client():
     """Helper function to retrieve a fresh, authorized Spotify client instance.
-    Returns None if not authenticated."""
+    Returns None if not authenticated.
+
+    This proactively refreshes the access token if it's expired or will
+    expire within a short threshold. If refresh is impossible (no refresh
+    token or refresh failure) we return None so callers will redirect the
+    user to re-authenticate instead of continuing with a stale token.
+    """
+    import time
+
     try:
         auth_manager = make_auth_manager()
         token_info = auth_manager.get_cached_token()
         
         if not token_info:
             return None
-        
+
+        now = int(time.time())
+        expires_at = token_info.get('expires_at', 0)
+
+        # If token is expired or will expire within 60 seconds, try refresh.
+        if expires_at - now < 60:
+            refresh_token = token_info.get('refresh_token')
+            if not refresh_token:
+                logger.info("No refresh token available; requesting re-auth.")
+                return None
+            try:
+                # refresh_access_token updates the cache file as well
+                token_info = auth_manager.refresh_access_token(refresh_token)
+                logger.debug("Refreshed Spotify token successfully.")
+            except Exception as e:
+                logger.error("Failed to refresh Spotify token: %s", e)
+                # Avoid returning a client with a stale token
+                return None
+
+        # Return Spotify client that will use the (now-fresh) auth_manager
         return spotipy.Spotify(auth_manager=auth_manager)
     except Exception as e:
         logger.error(f"Error getting Spotify client: {e}")
         return None
+
 
 def safe_get(dictionary, *keys, default=None):
     """Safely get nested dictionary values."""
@@ -90,8 +118,10 @@ def callback():
         if not code:
             return jsonify({'error': 'No authorization code provided'}), 400
         
-        # Exchange code for access token
-        auth_manager.get_access_token(code, as_dict=False)
+        # Exchange code for access token (request dict so refresh_token/expires_at are stored)
+        token_info = auth_manager.get_access_token(code, as_dict=True)
+        if not token_info or not token_info.get('access_token'):
+            return jsonify({'error': 'Failed to obtain access token'}), 500
         
         # Redirect to home page
         return redirect('/')
@@ -299,4 +329,3 @@ def previous_track():
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
-    
